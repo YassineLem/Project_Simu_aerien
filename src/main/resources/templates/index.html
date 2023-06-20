@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html  lang="en" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+       layout:decorate="~{layout}">
+
+<head>
+  <!-- Import Leaflet CSS -->
+  <link rel="stylesheet" th:href="@{app/leaflet/leaflet.css}">
+  <link rel="stylesheet" th:href="@{app/leaflet/leaflet-routing-machine.css}">
+
+  <style>
+    #map {
+      height: calc(100vh - 0px) !important;
+    }
+    .leaflet-container {  /* all maps */
+      width:  100%;
+      /* height: calc(100vh - 60px); */
+      height: 100vh;
+    }
+
+    .legend, .temporal-legend {
+      padding: 6px 10px;
+      font: 14px/16px Arial, Helvetica, sans-serif;
+      background: rgba(0,0,0,0.85);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+      color:whitesmoke;
+    }
+
+    #legendTitle {
+      text-align: center;
+      margin-bottom: 15px;
+      color: whitesmoke;
+      /* font-variant: small-caps; */
+      font-weight: bold;
+    }
+
+    .symbolsContainer {
+      float: left;
+      margin-left: 50px;
+    }
+
+    .legendCircle {
+      border-radius:50%;
+      border: 1px solid #537898;
+      background: rgba(0,128,128,0.5);
+      display: inline-block;
+    }
+
+    .legendValue {
+      position: absolute;
+      right: 12px;
+      color:whitesmoke;
+      font-size:10pt;
+      text-align:center;
+      font-weight: bold;
+    }
+
+    .info {
+      width:30vw;
+      height:48vh;
+      /* width:20vw; */
+      /* height:300px; */
+      padding: 6px 10px;
+      font: 14px/16px Arial, Helvetica, sans-serif;
+      background: rgba(0,0,0,0.85);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+      color:whitesmoke;
+      /* max-width:100%;
+      max-height:100%; */
+    }
+
+    .info h5 {
+      margin: 0 0 5px;
+      color: #777;
+      text-align: center;
+      /* margin-bottom: 15px; */
+      color: whitesmoke;
+      /* font-variant: small-caps; */
+      font-weight: bold;
+    }
+
+    .info #horBarChart {
+      width: 100% !important;
+      max-width: 800px;
+      /* height:inherit; */
+    }
+
+    .leaflet-control-layers {
+      float:right;
+      top:500px;
+      right:0;
+      /* margin-left:-200px; */
+      position:absolute;
+      background: rgba(0,0,0,0.85);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+      color:whitesmoke;
+    }
+  </style>
+</head>
+<body layout:fragment="content">
+<!-- Import Leaflet JS -->
+<script th:src="@{app/jquery/dist/jquery.min.js}"></script>
+<script th:src="@{app/leaflet/leaflet.js}"></script>
+<script th:src="@{app/leaflet/MovingMarker.js}"></script>
+<script th:src="@{app/leaflet/leaflet-routing-machine.js}"></script>
+<script th:src="@{app/leaflet/rotatedMarker.js}"></script>
+<script th:src="@{app/leaflet/leaflet-providers.js}"></script>
+
+<script th:src="@{app/extscripts/js/Chart.js}"></script>
+<div id="map"></div>
+
+<script type="text/javascript">
+  var dataUrl="http://localhost:8080/aeroport";
+  var varUrl="http://localhost:8080/vols";
+  var mymap = L.map("map").setView([-1, 20.476], 2);
+  // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  //   attribution:
+  //           'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+  //           '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+  //           'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+  //   id: "mapbox.streets",
+  //   maxZoom: 10,
+  // }).addTo(mymap);
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.png', {
+    maxZoom: 20,
+    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
+  }).addTo(mymap);
+  var myIcon1 = L.icon({
+    iconUrl: '/app/leaflet/images/2084175.png',
+    iconSize: [15, 15],
+    iconAnchor: [12, 12],
+  });
+  // Create layer groups
+  var point_layers = L.layerGroup();
+  $.getJSON(dataUrl, function(data) {
+    $.each(data, function(i, item) {
+      var cpoints = L.marker(L.latLng(item.localisation.coordinates[1], item.localisation.coordinates[0]), {
+        icon: myIcon1
+      }).addTo(mymap);
+      cpoints.bindPopup(
+               "<h2>"+ item.nom_aeroport.toString() +"</h2>" +
+               "<h4><b>Piste:</b> " + item.nbr_piste.toString() + "</h4>"+
+               "<h4><b>Places au sol:</b> " + item.nbr_place_Sol.toString() + " UT </h4>"+
+               "<h4><b>Acces aux pistes:</b> " + item.temps_acces.toString() + " UT </h4>"+
+               "<h4><b>Boucle d'attente:</b> " + item.duree_boucle.toString() + " UT </h4>"
+       );
+      cpoints.on('mouseover', function(e) {
+        // this.setStyle({color:'yellow'});
+        this.openPopup();
+      });
+      cpoints.on('mouseout', function(e) {
+        // this.setStyle({color:'#009999'});
+        this.closePopup();
+      });
+      // point_layers.addLayer(cpoints);
+    });
+  // point_layers.addTo(map);
+  });
+  //routing
+  // var rute=L.Routing.control({
+  //           show:false,
+  //           waypoints:[
+  //                   L.latLng(49.0097, 2.5479),
+  //                   L.latLng(33.3690,-7.5869)
+  //           ],
+  //           lineOptions:{
+  //             styles: [{color:'blue',opacity:1,weight:5}]
+  //           },
+  //         }
+  // ).addTo(mymap)
+  var dict = {};
+  // var myIcon = L.icon({
+  //   iconUrl: '/app/leaflet/images/icon.svg',
+  //   iconSize: [15, 15],
+  //   iconAnchor: [8, 8],
+  // });
+  var myIcon = L.icon({
+    iconUrl: '/app/leaflet/images/icon.svg',
+    iconSize: [14, 14],
+    iconAnchor: [8, 8],
+  });
+  $.getJSON(varUrl, function(data) {
+    $.each(data, function(i, item) {
+      var idVol = item.id_vol;
+      var trajectoire = [];
+
+      // Parcours des points de trajectoire
+      $.each(item.trajectoire, function(j, point) {
+        var coordinates = point.localisation.coordinates.reverse();
+        trajectoire.push(coordinates);
+      });
+
+      // Ajout des points de trajectoire dans le dictionnaire
+      dict[idVol] = trajectoire;
+    });
+    Marker=[]
+    for (var key in dict) {
+      var trajectoire = dict[key];
+      console.log(dict[key])
+       var vitess=[]
+      for(let k=0;k<dict[key].length;k++){
+        vitess.push(90000)}
+      var marker = L.Marker.movingMarker(trajectoire, vitess, { icon: myIcon }).addTo(mymap);
+      Marker[key]=marker
+      // var polyline = L.polyline(coordinates, {color: 'red'}).addTo(mymap);
+    }
+    for (let j = 1; j < Marker.length; j++) {
+      (function(j) { // Utiliser une IIFE pour créer une portée distincte pour chaque itération de la boucle
+        var currentCoordIndex = 1;
+        setTimeout(function() {
+          if (dict[j].length == 2) {
+            Marker[j].on('move', function(event) {
+              var currentPosition = event.target.getLatLng();
+              var currentCoord = dict[j][1];
+              var rotationAngle = getAngle(currentPosition.lat, currentPosition.lng, currentCoord[0], currentCoord[1]);
+              Marker[j].setRotationAngle(rotationAngle);
+            });
+          } else {
+            Marker[j].on('move', function (event) {
+              var currentPosition = event.target.getLatLng();
+              var currentCoord = dict[j][currentCoordIndex];
+              if (
+                      parseInt(currentPosition.lat) === parseInt(currentCoord[0]) ||
+                      parseInt(currentPosition.lng) === parseInt(currentCoord[1])
+              ) {
+                currentCoordIndex++;
+              }
+              var rotationAngle = getAngle(currentPosition.lat, currentPosition.lng, currentCoord[0], currentCoord[1]);
+              Marker[j].setRotationAngle(rotationAngle);
+            });
+          }
+        }, 9000 * j);
+      })(j);
+    }
+    for(let j=1;j<Marker.length;j++) {
+      setTimeout(function() {
+      L.polyline(dict[j]).addTo(mymap);
+      Marker[j].start();
+      }, 10000 * j);
+    }
+  });
+
+  var parisKievLL = [
+    [22.308, 113.9185],
+    [-33.9399, 151.1753]
+  ];
+  var parisKievLL1=[
+    [33.3690,-7.5869],
+    [25.2528,55.3644]
+  ];
+  var coordinates = [
+    [33.9416, -118.4085],
+    [51.47, -0.4543],
+    [22.308, 113.9185],
+    [-33.9399, 151.1753]
+  ];
+
+
+  function getAngle(lat1, lng1, lat2, lng2) {
+    var y = lat2-lat1;
+    var x = Math.cos(Math.PI/180*lat1)*(lng2 - lng1);
+    var angle = Math.atan2(y, x) * 180 / Math.PI;
+    return -angle;
+  }
+  // var polyline = L.polyline(coordinates, {color: 'red'}).addTo(mymap);
+  // var marker3 = L.Marker.movingMarker(coordinates, [10000, 10000,10000],{icon:myIcon}).addTo(mymap);
+  var coor=coordinates[1];
+  var currentCoordIndex = 1;
+  // marker3.on('move', function(event) {
+  //   var currentPosition = event.target.getLatLng();
+  //   var currentCoord = coordinates[currentCoordIndex];
+  //   marker3.setRotationAngle(getAngle(currentPosition.lat, currentPosition.lng, currentCoord[0], currentCoord[1]));
+  //
+  //   if (parseInt(currentPosition.lat) === parseInt(currentCoord[0]) || parseInt(currentPosition.lng) === parseInt(currentCoord[1])) {
+  //     currentCoordIndex++;
+  //     if (currentCoordIndex >= coordinates.length) {
+  //       currentCoordIndex = 0;
+  //     }
+  //   }
+  // });
+  // marker3.start()
+
+
+
+  // L.polyline(parisKievLL).addTo(mymap);
+
+
+
+
+
+  // myIcon.style.transform = "rotate(113.02684025106011deg)";
+
+  // console.log(getAngle(33.9416, -118.4085,-23.6245,-46.6559));
+  console.log(parisKievLL[0][0]);
+  // pour faire moving l'avion
+  // ---------------------------------------------------------------
+  // var marker1 = L.Marker.movingMarker(parisKievLL, [10000],{icon: myIcon,
+  //   rotationAngle: getAngle(parisKievLL[0][0],parisKievLL[0][1],parisKievLL[1][0],parisKievLL[1][1])}).addTo(mymap);
+  // L.polyline(parisKievLL).addTo(mymap);
+  // marker1.start()
+  // var marker2 = L.Marker.movingMarker(parisKievLL1, [10000],{icon: myIcon}).addTo(mymap);
+  // L.polyline(parisKievLL1).addTo(mymap);
+  // marker2.start()
+  // marker1.once('mouseover', function () {
+  //   marker1.start();
+  //   marker2.start();
+  //   marker1.closePopup();
+  //   marker1.unbindPopup();
+  // ---------------------------------------------------------------
+    // marker1.on('click', function() {
+    //   if (marker1.isRunning()) {
+    //     marker1.pause();
+    //   } else {
+    //     marker1.start();
+    //   }
+    // });
+    // marker1.on('move', function(event) {
+    //   var currentPosition = event.target.getLatLng();
+    //    if (currentPosition.lat == parisKievLL[1][0] && currentPosition.lng == parisKievLL[1][1]) {
+    //      marker1.setIcon(myIcon1)
+    //    }
+    //  });
+  // });
+
+</script>
+</body>
+</html>
